@@ -1,7 +1,9 @@
 # -*- coding:utf-8 -*-
 
 import numpy as np
+import logging
 from mltools import Parameter
+from mltools import EpochCalc
 
 def sigmoid(x):
     return np.piecewise(x, [x>0], [
@@ -78,13 +80,21 @@ class GBRBM:
             visible_sampling = self._mean_visible(hidden_sampling)
         return visible_sampling
 
-    def train(self, data, optimizer, learning_time=1000):
-        for i in range(1, learning_time+1):
+    def train(self, data, train_epoch, optimizer, minibatch_size=100, test_interval=1.0):
+        ec = EpochCalc(train_epoch, len(data), minibatch_size)
+
+        def per_test_epoch(update_time):
+            logging.info("[ {} / {} ]( {} / {} )".format(ec.update_to_epoch(update_time, force_integer=False), ec.train_epoch, update_time, ec.train_update))
+
+        per_test_epoch(0)
+        for i in range(1, ec.train_update+1):
             data_prob = self._prob_h_v(data)
             data_exp = self._data_mean(data, data_prob)
             model_exp = self._contrastive_divergence(data_prob)
             diff = optimizer.update( model_exp - model_exp )
             self.params += diff
+            if i % ec.epoch_to_update(test_interval) == 0:
+                per_test_epoch(i)
     
     def recall(self, data, forgotten, gauss=True):
         data[forgotten] = 0
