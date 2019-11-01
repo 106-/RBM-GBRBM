@@ -40,11 +40,13 @@ class GBRBM:
         visible_sampling = self._mean_visible(hidden_sampling) + self.sigma * np.random.randn(data_length, self.num_visible)
         return self._data_mean(visible_sampling, data_prob)
 
-    def _reconstruct(self, data):
+    def _reconstruct(self, data, gauss=True):
         data_length = len(data)
         hidden_sampling = self._prob_h_v(data) > np.random.rand(data_length, self.num_hidden)
-        # visible_sampling = self._mean_visible(hidden_sampling) + self.sigma * np.random.randn(data_length, self.num_visible)
-        visible_sampling = self._mean_visible(hidden_sampling)
+        if gauss: 
+            visible_sampling = self._mean_visible(hidden_sampling) + self.sigma * np.random.randn(data_length, self.num_visible)
+        else:
+            visible_sampling = self._mean_visible(hidden_sampling)
         return visible_sampling
 
     def train(self, data, learning_rate=0.01, learning_time=1000):
@@ -63,10 +65,11 @@ class GBRBM:
             self.bias_h += grad_h * learning_rate
             self.sigma  += grad_sigma * learning_rate
     
-    def recall(self, data, forgotten, return_broken_only=False):
+    def recall(self, data, forgotten, gauss=True):
         data[forgotten] = 0
-        recovered = self._reconstruct(data[np.newaxis, :])
-        if return_broken_only:
-            return recovered[forgotten]
-        else:
-            return recovered
+        if data.ndim == 1:
+            data = data[np.newaxis, :]
+        elif data.ndim > 2:
+            raise ValueError("recall method accepts only 2-dimensional data.")
+        recovered = self._reconstruct(data[np.newaxis, :], gauss)
+        return recovered
