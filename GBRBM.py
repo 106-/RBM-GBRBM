@@ -1,12 +1,43 @@
 # -*- coding:utf-8 -*-
 
 import numpy as np
+from mltools import Parameter
 
 def sigmoid(x):
     return np.piecewise(x, [x>0], [
         lambda x: 1 / (1+np.exp(-x)),
         lambda x: np.exp(x) / (1+np.exp(x))
     ])
+
+class GBRBM_params(Parameter):
+    def __init__(self, num_visible, num_hidden, initial_params=None):
+        self.num_visible = num_visible
+        self.num_hidden = num_hidden
+        self.param_names = ["weight", "bias_v", "bias_h", "sigma"]
+        
+        if initial_params is None:
+            uniform_range = np.sqrt( 6/(num_visible + num_hidden) )
+            self.weight = np.random.uniform(-uniform_range, uniform_range, (num_visible, num_hidden))
+            self.bias_v = np.random.rand(num_visible)
+            self.bias_h = np.random.rand(num_hidden)
+            self.sigma = np.random.randn(num_visible)
+        elif isinstance(initial_params, dict):
+            for p in self.param_names:
+                setattr(self, p, initial_params[p])
+        else:
+            raise TypeError("initial_params is unknown type :%s"%type(initial_params))
+
+        params = {}
+        for p in self.param_names:
+            params[p] = getattr(self, p)
+
+        super().__init__(params)
+
+    def zeros(self):
+        zero_params = {}
+        for p in self.param_names:
+            zero_params[p] = np.zeros(getattr(self, p).shape)
+        return GBRBM_params(self.num_visible, self.num_hidden, initial_params=zero_params)
 
 class GBRBM:
     def __init__(self, num_visible, num_hidden):
