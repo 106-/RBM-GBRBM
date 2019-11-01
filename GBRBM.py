@@ -2,6 +2,7 @@
 
 import numpy as np
 import logging
+import json
 from mltools import Parameter
 from mltools import EpochCalc
 
@@ -45,10 +46,10 @@ class GBRBM_params(Parameter):
         return GBRBM_params(self.num_visible, self.num_hidden, initial_params=zero_params)
 
 class GBRBM:
-    def __init__(self, num_visible, num_hidden):
+    def __init__(self, num_visible, num_hidden, initial_params=None):
         self.num_visible = num_visible
         self.num_hidden = num_hidden
-        self.params = GBRBM_params(num_visible, num_hidden)
+        self.params = GBRBM_params(num_visible, num_hidden, initial_params)
 
     def _mean_visible(self, hidden_data):
         return sigmoid( self.params.bias_v + np.dot( hidden_data, self.params.weight.T ) )
@@ -104,3 +105,21 @@ class GBRBM:
             raise ValueError("recall method accepts only 2-dimensional data.")
         recovered = self._reconstruct(data[np.newaxis, :], gauss)
         return recovered
+
+    def save(self, filename):
+        params_listed = {}
+        for p in self.params.param_names:
+            params_listed[p] = getattr(self.params, p).tolist()
+        data = {
+            "visible": self.num_visible,
+            "hidden": self.num_hidden,
+            "params": params_listed
+        }
+        json.dump(data, open(filename, "w+"), indent=2)
+    
+    @staticmethod
+    def load(filename):
+        data = json.load(open(filename, "r"))
+        for p in data["params"]:
+            data["params"][p] = np.array(data["params"][p])
+        return GBRBM(data["visible"], data["hidden"], data["params"])
